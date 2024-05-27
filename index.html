@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="根据 ip 获取地理信息在线调用版">
+  <link rel="icon" href="./logo.svg" type="image/svg" sizes="20x15">
+  <title>geo-ip2-api</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+<div id="app" class="ua-parser w-[100vw] h-[100vh] scroll-auto bg-gray-50">
+  <h1 class="sticky top-0 text-center text-4xl p-1 transition-all border-b border-black/10 bg-white">geo-ip2-api</h1>
+  <h4 class="my-4 text-center text-xl text-gray-500">根据 ip 获取地理信息在线调用版</h4>
+
+  <div class="mt-2 w-8/12 mx-auto">
+    <input
+        v-model="ip" type="text"
+        class="block w-full rounded-md border-0 p-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+    />
+  </div>
+
+  <div class="flex justify-center">
+    <button
+        class="w-[100px] my-2 flex justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        @click="query">
+      获取
+    </button>
+
+    <button
+        class="w-[140px] my-2 ml-4 flex justify-center rounded-md bg-violet-500 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        @click="dataFormatting">
+      数据格式化
+    </button>
+  </div>
+
+  <div class="w-8/12 mx-auto">
+    <textarea
+        rows="20"
+        readonly
+        class="block w-full rounded-md border-0 p-2 bg-[#1C1B19] text-white shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        v-model="parserJson">
+    </textarea>
+  </div>
+
+  <div class="flex justify-center p-4">
+    <a class="text-gray-600 hover:text-indigo-600" href="https://github.com/vaebe/uaparser-api">Github by vaebe</a>
+  </div>
+</div>
+
+<script>
+  const {createApp, ref, computed} = Vue
+
+  const app = createApp({
+    setup() {
+      const ip = ref('159.226.171.49')
+
+      const parserIpInfo = ref({})
+      const parserJson = computed(() => {
+        return JSON.stringify(parserIpInfo.value, null, 2)
+      })
+
+      async function getData(paramsObj) {
+        const params = new URLSearchParams(paramsObj)
+        let url = `https://geo-ip2-api.vercel.app/api/query?${params.toString()}`
+
+        try {
+          const response = await fetch(url)
+          parserIpInfo.value = await response.json()
+        } catch (error) {
+          console.error('Error fetching data:', error)
+        }
+      }
+
+      function query() {
+        if (!ip.value) {
+          // todo 弹窗提示
+          return
+        }
+
+        getData({ip: ip.value})
+      }
+
+      query()
+
+      function dataFormatting() {
+        getData({ip: ip.value, lang: 'zh-CN'})
+      }
+
+      return {
+        ip,
+        parserJson,
+        query,
+        dataFormatting,
+      }
+    }
+  })
+
+  app.mount('#app')
+</script>
+</body>
+</html>
