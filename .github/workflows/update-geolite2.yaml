@@ -23,11 +23,15 @@ jobs:
         cp -v GeoLite2-City_*/GeoLite2-City.mmdb data/
 
     - name: Commit and push to main branch
-      run: |
-        git config user.name "${{ github.actor }}"
-        git config user.email "${{ github.actor }}@users.noreply.github.com"
-        git add data/GeoLite2-City.mmdb
-        git commit -m "Update GeoLite2-City.mmdb to ${{ env.TAG_NAME }}"
-        git push origin main
+      run: | 
+        if [[ -n "$(git status --porcelain)" ]]; then
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add data/GeoLite2-City.mmdb
+          git commit -m "chore: Update GeoLite2-City.mmdb to ${{ env.TAG_NAME }}"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+        else
+          echo "No changes to commit, skip commit"
+        fi
       env:
         TAG_NAME: $(date +"%Y.%m.%d")
