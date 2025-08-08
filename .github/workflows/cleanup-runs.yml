@@ -1,0 +1,57 @@
+name: Cleanup old workflow runs
+
+on:
+  schedule:
+    # 每天 UTC 02:30 跑一次，也可改成你喜欢的 cron
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+    inputs:
+      retention_days:
+        description: "保留最近多少天的运行记录"
+        required: true
+        default: "30"
+        type: string
+
+env:
+  # 默认保留天数，当 workflow_dispatch 没传值时生效
+  DEFAULT_RETENTION_DAYS: 30
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write  # 删除运行记录需要写权限
+    steps:
+      - name: Compute cut-off date
+        id: date
+        run: |
+          DAYS=${{ github.event.inputs.retention_days || env.DEFAULT_RETENTION_DAYS }}
+          echo "Cut-off retention: $DAYS days"
+          # 生成 ISO8601 格式时间戳，作为 API 的 created 参数
+          echo "cutoff=$(date -u -d "$DAYS days ago" +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
+      - name: Delete workflow runs older than cutoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          CUTOFF: ${{ steps.date.outputs.cutoff }}
+        run: |
+          set -euo pipefail
+
+          # 分页获取并删除
+          for ((page=1; page<=100; page++)); do
+            echo "Fetching page $page …"
+            runs=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$REPO/actions/runs?created=<$CUTOFF&per_page=100&page=$page" \
+              --jq '.workflow_runs[] | select(.status == "completed") | .id')
+
+            [ -z "$runs" ] && { echo "No more runs to delete"; break; }
+
+            for id in $runs; do
+              echo "Deleting run $id"
+              gh api --silent -X DELETE "/repos/$REPO/actions/runs/$id"
+            done
+          done
+
+          echo "Cleanup finished"
